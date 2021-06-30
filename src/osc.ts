@@ -7,59 +7,56 @@
 
 /* global require, module, process, Buffer, Long, util */
 
-var osc = osc || {};
-
-(function () {
-
-    "use strict";
-
-    osc.SECS_70YRS = 2208988800;
-    osc.TWO_32 = 4294967296;
-
-    osc.defaults = {
+class Osc {
+    SECS_70YRS: number = 2208988800;
+    TWO_32: number = 4294967296;
+    defaults = {
         metadata: false,
         unpackSingleArgs: true
     };
+    isCommonJS: boolean
+    isNode: boolean
+    isElectron: boolean
+    isBufferEnv: boolean
 
-    // Unsupported, non-API property.
-    osc.isCommonJS = typeof module !== "undefined" && module.exports ? true : false;
+    constructor() {
+        this.isCommonJS = typeof module !== "undefined" && module.exports ? true : false;
+        this.isNode = osc.isCommonJS && typeof window === "undefined";
+        // Unsupported, non-API property.
+        this.isElectron = typeof process !== "undefined" &&
+            process.versions && process.versions.electron ? true : false;
 
-    // Unsupported, non-API property.
-    osc.isNode = osc.isCommonJS && typeof window === "undefined";
+        // Unsupported, non-API property.
+        this.isBufferEnv = osc.isNode || osc.isElectron;
 
-    // Unsupported, non-API property.
-    osc.isElectron = typeof process !== "undefined" &&
-        process.versions && process.versions.electron ? true : false;
+        // Unsupported, non-API member.
+        osc.Long = typeof Long !== "undefined" ? Long :
+            osc.isNode ? require("long") : undefined;
 
-    // Unsupported, non-API property.
-    osc.isBufferEnv = osc.isNode || osc.isElectron;
+        // Unsupported, non-API member. Can be removed when supported versions
+        // of Node.js expose TextDecoder as a global, as in the browser.
+        osc.TextDecoder = typeof TextDecoder !== "undefined" ? new TextDecoder("utf-8") :
+            typeof util !== "undefined" && typeof (util.TextDecoder !== "undefined") ? new util.TextDecoder("utf-8") : undefined;
+
+        osc.TextEncoder = typeof TextEncoder !== "undefined" ? new TextEncoder("utf-8") :
+            typeof util !== "undefined" && typeof (util.TextEncoder !== "undefined") ? new util.TextEncoder("utf-8") : undefined;
+
+    }
 
     // Unsupported, non-API function.
-    osc.isArray = function (obj) {
+    public isArray(obj) {
         return obj && Object.prototype.toString.call(obj) === "[object Array]";
     };
 
     // Unsupported, non-API function.
-    osc.isTypedArrayView = function (obj) {
+    public isTypedArrayView(obj) {
         return obj.buffer && obj.buffer instanceof ArrayBuffer;
     };
 
     // Unsupported, non-API function.
-    osc.isBuffer = function (obj) {
+    public isBuffer(obj) {
         return osc.isBufferEnv && obj instanceof Buffer;
     };
-
-    // Unsupported, non-API member.
-    osc.Long = typeof Long !== "undefined" ? Long :
-        osc.isNode ? require("long") : undefined;
-
-    // Unsupported, non-API member. Can be removed when supported versions
-    // of Node.js expose TextDecoder as a global, as in the browser.
-    osc.TextDecoder = typeof TextDecoder !== "undefined" ? new TextDecoder("utf-8") :
-        typeof util !== "undefined" && typeof (util.TextDecoder !== "undefined") ? new util.TextDecoder("utf-8") : undefined;
-
-    osc.TextEncoder = typeof TextEncoder !== "undefined" ? new TextEncoder("utf-8") :
-        typeof util !== "undefined" && typeof (util.TextEncoder !== "undefined") ? new util.TextEncoder("utf-8") : undefined;
 
     /**
      * Wraps the specified object in a DataView.
@@ -68,7 +65,7 @@ var osc = osc || {};
      * @return {DataView} the DataView object
      */
     // Unsupported, non-API function.
-    osc.dataView = function (obj, offset, length) {
+    public dataView(obj, offset, length) {
         if (obj.buffer) {
             return new DataView(obj.buffer, offset, length);
         }
@@ -90,7 +87,7 @@ var osc = osc || {};
      * @returns {Uint8Array} a typed array of octets
      */
     // Unsupported, non-API function.
-    osc.byteArray = function (obj) {
+    public byteArray(obj) {
         if (obj instanceof Uint8Array) {
             return obj;
         }
@@ -120,7 +117,7 @@ var osc = osc || {};
      * @returns {Buffer|Uint8Array} a buffer object
      */
     // Unsupported, non-API function.
-    osc.nativeBuffer = function (obj) {
+    public nativeBuffer(obj: Buffer|any[]): Buffer|Uint8Array {
         if (osc.isBufferEnv) {
             return osc.isBuffer(obj) ? obj :
                 Buffer.from(obj.buffer ? obj : new Uint8Array(obj));
@@ -130,7 +127,7 @@ var osc = osc || {};
     };
 
     // Unsupported, non-API function
-    osc.copyByteArray = function (source, target, offset) {
+    public copyByteArray(source, target, offset) {
         if (osc.isTypedArrayView(source) && osc.isTypedArrayView(target)) {
             target.set(source, offset);
         } else {
@@ -152,7 +149,7 @@ var osc = osc || {};
      * @param {Object} offsetState an offsetState object used to store the current offset index
      * @return {String} the JavaScript String that was read
      */
-    osc.readString = function (dv, offsetState) {
+    public readString(dv: DataView, offsetState: OffsetState) {
         var charCodes = [],
             idx = offsetState.idx;
 
@@ -206,7 +203,7 @@ var osc = osc || {};
      * @param {String} str the string to write
      * @return {Uint8Array} a buffer containing the OSC-formatted string
      */
-    osc.writeString = function (str) {
+    public writeString(str) {
         var terminated = str + "\u0000",
             len = terminated.length,
             paddedLen = (len + 3) & ~0x03,
@@ -237,7 +234,7 @@ var osc = osc || {};
     };
 
     // Unsupported, non-API function.
-    osc.readPrimitive = function (dv, readerName, numBytes, offsetState) {
+    public readPrimitive(dv, readerName, numBytes, offsetState) {
         var val = dv[readerName](offsetState.idx, false);
         offsetState.idx += numBytes;
 
@@ -245,7 +242,7 @@ var osc = osc || {};
     };
 
     // Unsupported, non-API function.
-    osc.writePrimitive = function (val, dv, writerName, numBytes, offset) {
+    public writePrimitive(val, dv, writerName, numBytes, offset) {
         offset = offset === undefined ? 0 : offset;
 
         var arr;
@@ -268,7 +265,7 @@ var osc = osc || {};
      * @param {Object} offsetState an offsetState object used to store the current offset index into dv
      * @return {Number} the number that was read
      */
-    osc.readInt32 = function (dv, offsetState) {
+    public readInt32(dv, offsetState) {
         return osc.readPrimitive(dv, "getInt32", 4, offsetState);
     };
 
@@ -279,7 +276,7 @@ var osc = osc || {};
      * @param {DataView} [dv] a DataView instance to write the number into
      * @param {Number} [offset] an offset into dv
      */
-    osc.writeInt32 = function (val, dv, offset) {
+    public writeInt32(val, dv, offset) {
         return osc.writePrimitive(val, dv, "setInt32", 4, offset);
     };
 
@@ -290,7 +287,7 @@ var osc = osc || {};
      * @param {Object} offsetState an offsetState object used to store the current offset index into dv
      * @return {Number} the number that was read
      */
-    osc.readInt64 = function (dv, offsetState) {
+    public readInt64(dv, offsetState) {
         var high = osc.readPrimitive(dv, "getInt32", 4, offsetState),
             low = osc.readPrimitive(dv, "getInt32", 4, offsetState);
 
@@ -312,10 +309,10 @@ var osc = osc || {};
      * @param {DataView} [dv] a DataView instance to write the number into
      * @param {Number} [offset] an offset into dv
      */
-    osc.writeInt64 = function (val, dv, offset) {
+    public writeInt64(val: number, dv:DataView, offset:number) {
         var arr = new Uint8Array(8);
         arr.set(osc.writePrimitive(val.high, dv, "setInt32", 4, offset), 0);
-        arr.set(osc.writePrimitive(val.low,  dv, "setInt32", 4, offset + 4), 4);
+        arr.set(osc.writePrimitive(val.low, dv, "setInt32", 4, offset + 4), 4);
         return arr;
     };
 
@@ -326,7 +323,7 @@ var osc = osc || {};
      * @param {Object} offsetState an offsetState object used to store the current offset index into dv
      * @return {Number} the number that was read
      */
-    osc.readFloat32 = function (dv, offsetState) {
+    public readFloat32(dv, offsetState) {
         return osc.readPrimitive(dv, "getFloat32", 4, offsetState);
     };
 
@@ -337,7 +334,7 @@ var osc = osc || {};
      * @param {DataView} [dv] a DataView instance to write the number into
      * @param {Number} [offset] an offset into dv
      */
-    osc.writeFloat32 = function (val, dv, offset) {
+    public writeFloat32(val, dv, offset) {
         return osc.writePrimitive(val, dv, "setFloat32", 4, offset);
     };
 
@@ -348,7 +345,7 @@ var osc = osc || {};
      * @param {Object} offsetState an offsetState object used to store the current offset index into dv
      * @return {Number} the number that was read
      */
-    osc.readFloat64 = function (dv, offsetState) {
+    public readFloat64(dv, offsetState) {
         return osc.readPrimitive(dv, "getFloat64", 8, offsetState);
     };
 
@@ -359,7 +356,7 @@ var osc = osc || {};
      * @param {DataView} [dv] a DataView instance to write the number into
      * @param {Number} [offset] an offset into dv
      */
-    osc.writeFloat64 = function (val, dv, offset) {
+    public writeFloat64(val, dv, offset) {
         return osc.writePrimitive(val, dv, "setFloat64", 8, offset);
     };
 
@@ -370,7 +367,7 @@ var osc = osc || {};
      * @param {Object} offsetState an offsetState object used to store the current offset index into dv
      * @return {String} a string containing the read character
      */
-    osc.readChar32 = function (dv, offsetState) {
+    public readChar32(dv, offsetState) {
         var charCode = osc.readPrimitive(dv, "getUint32", 4, offsetState);
         return String.fromCharCode(charCode);
     };
@@ -383,7 +380,7 @@ var osc = osc || {};
      * @param {Number} [offset] an offset into dv
      * @return {String} a string containing the read character
      */
-    osc.writeChar32 = function (str, dv, offset) {
+    public writeChar32(str, dv, offset) {
         var charCode = str.charCodeAt(0);
         if (charCode === undefined || charCode < -1) {
             return undefined;
@@ -399,7 +396,7 @@ var osc = osc || {};
      * @param {Object} offsetState an offsetState object used to store the current offset index into dv
      * @return {Uint8Array} the data that was read
      */
-    osc.readBlob = function (dv, offsetState) {
+    public readBlob(dv, offsetState) {
         var len = osc.readInt32(dv, offsetState),
             paddedLen = (len + 3) & ~0x03,
             blob = new Uint8Array(dv.buffer, offsetState.idx, len);
@@ -415,7 +412,7 @@ var osc = osc || {};
      * @param {Array-like} data a collection of octets
      * @return {ArrayBuffer} a buffer containing the OSC-formatted blob
      */
-    osc.writeBlob = function (data) {
+    public writeBlob(data) {
         data = osc.byteArray(data);
 
         var len = data.byteLength,
@@ -442,7 +439,7 @@ var osc = osc || {};
      * @param {Object} offsetState an offsetState object used to store the current offset index into dv
      * @return {Uint8Array} an array containing (in order) the port ID, status, data1 and data1 bytes
      */
-    osc.readMIDIBytes = function (dv, offsetState) {
+    public readMIDIBytes(dv, offsetState) {
         var midi = new Uint8Array(dv.buffer, offsetState.idx, 4);
         offsetState.idx += 4;
 
@@ -455,7 +452,7 @@ var osc = osc || {};
      * @param {Array-like} bytes a 4-element array consisting of the port ID, status, data1 and data1 bytes
      * @return {Uint8Array} the written message
      */
-    osc.writeMIDIBytes = function (bytes) {
+    public writeMIDIBytes(bytes) {
         bytes = osc.byteArray(bytes);
 
         var arr = new Uint8Array(4);
@@ -471,7 +468,7 @@ var osc = osc || {};
      * @param {Object} offsetState an offsetState object used to store the current offset index into dv
      * @return {Object} a colour object containing r, g, b, and a properties
      */
-    osc.readColor = function (dv, offsetState) {
+    public readColor(dv, offsetState) {
         var bytes = new Uint8Array(dv.buffer, offsetState.idx, 4),
             alpha = bytes[3] / 255;
 
@@ -491,7 +488,7 @@ var osc = osc || {};
      * @param {Object} color a colour object containing r, g, b, and a properties
      * @return {Uint8Array} a byte array containing the written color
      */
-    osc.writeColor = function (color) {
+    public writeColor(color) {
         var alpha = Math.round(color.a * 255),
             arr = new Uint8Array([color.r, color.g, color.b, alpha]);
 
@@ -501,28 +498,28 @@ var osc = osc || {};
     /**
      * Reads an OSC true ("T") value by directly returning the JavaScript Boolean "true".
      */
-    osc.readTrue = function () {
+    public readTrue() {
         return true;
     };
 
     /**
      * Reads an OSC false ("F") value by directly returning the JavaScript Boolean "false".
      */
-    osc.readFalse = function () {
+    public readFalse() {
         return false;
     };
 
     /**
      * Reads an OSC nil ("N") value by directly returning the JavaScript "null" value.
      */
-    osc.readNull = function () {
+    public readNull() {
         return null;
     };
 
     /**
      * Reads an OSC impulse/bang/infinitum ("I") value by directly returning 1.0.
      */
-    osc.readImpulse = function () {
+    public readImpulse() {
         return 1.0;
     };
 
@@ -533,7 +530,7 @@ var osc = osc || {};
      * @param {Object} offsetState an offset state object containing the current index into dv
      * @param {Object} a time tag object containing both the raw NTP as well as the converted native (i.e. JS/UNIX) time
      */
-    osc.readTimeTag = function (dv, offsetState) {
+    public readTimeTag(dv, offsetState) {
         var secs1900 = osc.readPrimitive(dv, "getUint32", 4, offsetState),
             frac = osc.readPrimitive(dv, "getUint32", 4, offsetState),
             native = (secs1900 === 0 && frac === 1) ? Date.now() : osc.ntpToJSTime(secs1900, frac);
@@ -555,7 +552,7 @@ var osc = osc || {};
      * @param {Object} timeTag time tag object containing either a native JS timestamp (in ms) or a NTP timestamp pair
      * @return {Uint8Array} raw bytes for the written time tag
      */
-    osc.writeTimeTag = function (timeTag) {
+    public writeTimeTag(timeTag) {
         var raw = timeTag.raw ? timeTag.raw : osc.jsToNTPTime(timeTag.native),
             arr = new Uint8Array(8), // Two Unit32s.
             dv = new DataView(arr.buffer);
@@ -574,7 +571,7 @@ var osc = osc || {};
      * @param {Number} now the number of milliseconds since epoch to use as the current time. Defaults to Date.now()
      * @return {Object} the time tag
      */
-    osc.timeTag = function (secs, now) {
+    public timeTag(secs, now) {
         secs = secs || 0;
         now = now || Date.now();
 
@@ -609,7 +606,7 @@ var osc = osc || {};
      * @param {Number} frac the number of fractions of a second (between 0 and 2^32)
      * @return {Number} a JavaScript-compatible timestamp in milliseconds
      */
-    osc.ntpToJSTime = function (secs1900, frac) {
+    public ntpToJSTime(secs1900, frac) {
         var secs1970 = secs1900 - osc.SECS_70YRS,
             decimals = frac / osc.TWO_32,
             msTime = (secs1970 + decimals) * 1000;
@@ -617,7 +614,7 @@ var osc = osc || {};
         return msTime;
     };
 
-    osc.jsToNTPTime = function (jsTime) {
+    public jsToNTPTime(jsTime) {
         var secs = jsTime / 1000,
             secsWhole = Math.floor(secs),
             secsFrac = secs - secsWhole,
@@ -635,7 +632,7 @@ var osc = osc || {};
      * @param {Object} [options] read options
      * @return {Array} an array of the OSC arguments that were read
      */
-    osc.readArguments = function (dv, options, offsetState) {
+    public readArguments(dv, options, offsetState) {
         var typeTagString = osc.readString(dv, offsetState);
         if (typeTagString.indexOf(",") !== 0) {
             // Despite what the OSC 1.0 spec says,
@@ -656,7 +653,7 @@ var osc = osc || {};
     };
 
     // Unsupported, non-API function.
-    osc.readArgument = function (argType, typeTagString, dv, options, offsetState) {
+    public readArgument(argType, typeTagString, dv, options, offsetState) {
         var typeSpec = osc.argumentTypes[argType];
         if (!typeSpec) {
             throw new Error("'" + argType + "' is not a valid OSC type tag. Type tag string was: " + typeTagString);
@@ -676,7 +673,7 @@ var osc = osc || {};
     };
 
     // Unsupported, non-API function.
-    osc.readArgumentsIntoArray = function (arr, argTypes, typeTagString, dv, options, offsetState) {
+    public readArgumentsIntoArray(arr, argTypes, typeTagString, dv, options, offsetState) {
         var i = 0;
 
         while (i < argTypes.length) {
@@ -713,13 +710,13 @@ var osc = osc || {};
      * @param {Object} options options for writing
      * @return {Uint8Array} a buffer containing the OSC-formatted argument type tag and values
      */
-    osc.writeArguments = function (args, options) {
+    public writeArguments(args, options) {
         var argCollection = osc.collectArguments(args, options);
         return osc.joinParts(argCollection);
     };
 
     // Unsupported, non-API function.
-    osc.joinParts = function (dataCollection) {
+    public joinParts(dataCollection) {
         var buf = new Uint8Array(dataCollection.byteLength),
             parts = dataCollection.parts,
             offset = 0;
@@ -734,12 +731,12 @@ var osc = osc || {};
     };
 
     // Unsupported, non-API function.
-    osc.addDataPart = function (dataPart, dataCollection) {
+    public addDataPart(dataPart, dataCollection) {
         dataCollection.parts.push(dataPart);
         dataCollection.byteLength += dataPart.length;
     };
 
-    osc.writeArrayArguments = function (args, dataCollection) {
+    public writeArrayArguments(args, dataCollection) {
         var typeTag = "[";
 
         for (var i = 0; i < args.length; i++) {
@@ -752,7 +749,7 @@ var osc = osc || {};
         return typeTag;
     };
 
-    osc.writeArgument = function (arg, dataCollection) {
+    public writeArgument(arg, dataCollection) {
         if (osc.isArray(arg)) {
             return osc.writeArrayArguments(arg, dataCollection);
         }
@@ -769,7 +766,7 @@ var osc = osc || {};
     };
 
     // Unsupported, non-API function.
-    osc.collectArguments = function (args, options, dataCollection) {
+    public collectArguments(args, options, dataCollection) {
         if (!osc.isArray(args)) {
             args = typeof args === "undefined" ? [] : [args];
         }
@@ -806,7 +803,7 @@ var osc = osc || {};
      * @param {Object} [offsetState] an offsetState object that stores the current offset into dv
      * @return {Object} the OSC message, formatted as a JavaScript object containing "address" and "args" properties
      */
-    osc.readMessage = function (data, options, offsetState) {
+    public readMessage(data, options, offsetState) {
         options = options || osc.defaults;
 
         var dv = osc.dataView(data, data.byteOffset, data.byteLength);
@@ -819,7 +816,7 @@ var osc = osc || {};
     };
 
     // Unsupported, non-API function.
-    osc.readMessageContents = function (address, dv, options, offsetState) {
+    public readMessageContents(address, dv, options, offsetState) {
         if (address.indexOf("/") !== 0) {
             throw new Error("A malformed OSC address was found while reading " +
                 "an OSC message. String was: " + address);
@@ -834,7 +831,7 @@ var osc = osc || {};
     };
 
     // Unsupported, non-API function.
-    osc.collectMessageParts = function (msg, options, dataCollection) {
+    public collectMessageParts(msg, options, dataCollection) {
         dataCollection = dataCollection || {
             byteLength: 0,
             parts: []
@@ -851,7 +848,7 @@ var osc = osc || {};
      * @param {Object} [options] write options
      * @return {Uint8Array} an array of bytes containing the OSC message
      */
-    osc.writeMessage = function (msg, options) {
+    public writeMessage(msg, options) {
         options = options || osc.defaults;
 
         if (!osc.isValidMessage(msg)) {
@@ -863,7 +860,7 @@ var osc = osc || {};
         return osc.joinParts(msgCollection);
     };
 
-    osc.isValidMessage = function (msg) {
+    public isValidMessage(msg) {
         return msg.address && msg.address.indexOf("/") === 0;
     };
 
@@ -875,12 +872,12 @@ var osc = osc || {};
      * @param {Object} [offsetState] an offsetState object that stores the current offset into dv
      * @return {Object} the bundle or message object that was read
      */
-    osc.readBundle = function (dv, options, offsetState) {
+    public readBundle(dv, options, offsetState) {
         return osc.readPacket(dv, options, offsetState);
     };
 
     // Unsupported, non-API function.
-    osc.collectBundlePackets = function (bundle, options, dataCollection) {
+    public collectBundlePackets(bundle, options, dataCollection) {
         dataCollection = dataCollection || {
             byteLength: 0,
             parts: []
@@ -909,7 +906,7 @@ var osc = osc || {};
      * @param {object} [options] write options
      * @return {Uint8Array} an array of bytes containing the message
      */
-    osc.writeBundle = function (bundle, options) {
+    public writeBundle(bundle, options) {
         if (!osc.isValidBundle(bundle)) {
             throw new Error("An OSC bundle must contain 'timeTag' and 'packets' properties. " +
                 "Bundle was: " + JSON.stringify(bundle, null, 2));
@@ -921,12 +918,12 @@ var osc = osc || {};
         return osc.joinParts(bundleCollection);
     };
 
-    osc.isValidBundle = function (bundle) {
+    public isValidBundle(bundle) {
         return bundle.timeTag !== undefined && bundle.packets !== undefined;
     };
 
     // Unsupported, non-API function.
-    osc.readBundleContents = function (dv, options, offsetState, len) {
+    public readBundleContents(dv, options, offsetState, len) {
         var timeTag = osc.readTimeTag(dv, offsetState),
             packets = [];
 
@@ -951,7 +948,7 @@ var osc = osc || {};
      * @param {Object} [options] read options
      * @return {Object} a bundle or message object
      */
-    osc.readPacket = function (data, options, offsetState, len) {
+    public readPacket(data, options, offsetState, len) {
         var dv = osc.dataView(data, data.byteOffset, data.byteLength);
 
         len = len === undefined ? dv.byteLength : len;
@@ -979,7 +976,7 @@ var osc = osc || {};
      * @param {Object} [options] write options
      * @return {Uint8Array} an array of bytes containing the message
      */
-    osc.writePacket = function (packet, options) {
+    public writePacket(packet, options) {
         if (osc.isValidMessage(packet)) {
             return osc.writeMessage(packet, options);
         } else if (osc.isValidBundle(packet)) {
@@ -1052,7 +1049,7 @@ var osc = osc || {};
     };
 
     // Unsupported, non-API function.
-    osc.inferTypeForArgument = function (arg) {
+    public inferTypeForArgument(arg) {
         var type = typeof arg;
 
         // TODO: This is freaking hideous.
@@ -1082,7 +1079,7 @@ var osc = osc || {};
     };
 
     // Unsupported, non-API function.
-    osc.annotateArguments = function (args) {
+    public annotateArguments(args) {
         var annotated = [];
 
         for (var i = 0; i < args.length; i++) {
@@ -1110,7 +1107,7 @@ var osc = osc || {};
         return annotated;
     };
 
-    if (osc.isCommonJS) {
+    if(osc.isCommonJS) {
         module.exports = osc;
     }
-}());
+} ());

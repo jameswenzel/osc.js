@@ -1,0 +1,22 @@
+{
+    "types": [
+        "webmidi"
+    ],
+    "compilerOptions": {
+        "module": "ES2015",
+        "target": "ES2015",
+        "noImplicitAny": true,
+        "sourceMap": true,
+        "outDir": "dist",
+        "baseUrl": ".",
+        "paths": {
+            "*": [
+                "node_modules/*"
+            ]
+        },
+        "moduleResolution": "node"
+    },
+    "include": [
+        "src/**/*"
+    ]
+}
